@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>图形的旋转 · 课堂语音交互辅助系统</title>
+    <style>
+        /* ----- 全局重置 & 基础 ----- */
+        * {
+            user-select: none;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, 'Segoe UI', 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(145deg, #d4e9ff 0%, #b8d4f0 100%);
+            min-height: 100vh;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .app-container {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(4px);
+            border-radius: 56px;
+            padding: 24px 28px 28px;
+            box-shadow: 0 25px 45px -12px rgba(0, 0, 0, 0.30);
+        }
+
+        /* ----- 顶部标题 ----- */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            padding: 0 4px;
+            gap: 12px;
+        }
+        .app-header .left {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .app-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a3b3c;
+            letter-spacing: 0.5px;
+        }
+        .app-header .sub {
+            font-size: 0.95rem;
+            color: #3a5a5b;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 4px 16px;
+            border-radius: 40px;
+        }
+        .student-badge {
+            background: #2c3e3f;
+            color: white;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            white-space: nowrap;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        /* ----- 主区域：风车 + 旋钮 ----- */
+        .main-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .wind-area {
+            flex: 2;
+            min-width: 280px;
+            background: #eaf7e6;
+            border-radius: 48px;
+            padding: 18px 18px 14px;
+            box-shadow: inset 0 1px 6px #0001, 0 12px 20px -12px rgba(0, 0, 0, 0.18);
+        }
+        .wind-title {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f6d49;
+            margin-bottom: 8px;
+        }
+        canvas#windCanvas {
+            display: block;
+            width: 100%;
+            background: #cfe6cf;
+            border-radius: 32px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin: 0 auto;
+            aspect-ratio: 500 / 350;
+        }
+        .wind-status {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            background: #ffffffaa;
+            border-radius: 60px;
+            padding: 6px 12px;
+            color: #1f4d3a;
+            font-size: 0.95rem;
+        }
+
+        .knob-area {
+            flex: 1.4;
+            min-width: 300px;
+            background: #2c3e3f;
+            border-radius: 48px;
+            padding: 18px 20px 20px;
+            color: white;
+            box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.30);
+            display: flex;
+            flex-direction: column;
+        }
+        .knob-title {
+            text-align: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .knob-container {
+            background: #1e2a2b;
+            border-radius: 60px;
+            padding: 14px;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 6px;
+        }
+        canvas#knobCanvas {
+            background: #f5f0e0;
+            border-radius: 50%;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.30);
+            width: 160px;
+            height: 160px;
+            display: block;
+        }
+        .knob-pointer-deg {
+            text-align: center;
+            font-size: 0.85rem;
+            background: #00000060;
+            border-radius: 40px;
+            padding: 4px 8px;
+            margin: 4px 0 10px;
+        }
+
+        /* ----- 语音控制 + 状态 ----- */
+        .voice-control-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            justify-content: center;
+            margin: 6px 0 10px;
+            flex-wrap: wrap;
+        }
+        .mic-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #3a5a5b;
+            border: none;
+            border-radius: 60px;
+            padding: 8px 22px 8px 18px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+        }
+        .mic-btn:hover {
+            background: #4a6e6f;
+            transform: scale(1.02);
+        }
+        .mic-btn .icon {
+            font-size: 1.7rem;
+            line-height: 1;
+        }
+        .mic-btn .label {
+            font-size: 0.95rem;
+        }
+        .mic-btn.listening {
+            background: #c97d2e;
+            animation: micGlow 1s infinite alternate;
+        }
+        @keyframes micGlow {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 180, 50, 0.4);
+            }
+            100% {
+                box-shadow: 0 0 20px 8px rgba(255, 180, 50, 0.2);
+            }
+        }
+        .mic-status-hint {
+            font-size: 0.8rem;
+            color: #bdd8d0;
+            text-align: center;
+            margin-top: 2px;
+        }
+        .mic-status-hint .warn {
+            color: #f5b87a;
+        }
+
+        /* ----- 语音交互信息区（会话记录 + 操作栏） ----- */
+        .voice-data-area {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            padding-top: 16px;
+        }
+
+        /* 全部会话记录 - 统一展示 */
+        .session-box {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 28px;
+            padding: 12px 16px;
+            backdrop-filter: blur(2px);
+        }
+        .session-box .box-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9bc0b8;
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .session-box .box-label span {
+            font-size: 0.65rem;
+            background: rgba(255, 255, 255, 0.10);
+            padding: 0 10px;
+            border-radius: 30px;
+            color: #c0d9d0;
+        }
+        .session-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .session-list .round {
+            display: flex;
+            align-items: baseline;
+            gap: 8px 16px;
+            flex-wrap: wrap;
+            padding: 4px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border-left: 3px solid #4e7a6e;
+            font-size: 0.85rem;
+            color: #dce8e2;
+        }
+        .session-list .round .r-idx {
+            color: #7fa89a;
+            font-weight: 600;
+            font-size: 0.75rem;
+            min-width: 70px;
+            font-family: monospace;
+        }
+        .session-list .round .r-text {
+            flex: 1;
+            word-break: break-word;
+        }
+        .session-list .round .r-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+        }
+        .session-list .round .r-tags .tag {
+            font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 0 10px;
+            border-radius: 30px;
+            color: #c8ddd4;
+        }
+        .session-list .round .r-tags .tag.missing {
+            background: rgba(230, 120, 80, 0.25);
+            color: #f5c8b0;
+        }
+        .session-list .round .r-tags .tag.complete {
+            background: rgba(80, 200, 150, 0.20);
+            color: #b0e8d0;
+        }
+        .session-list .round .r-tags .tag.angle-err {
+            background: rgba(220, 160, 60, 0.20);
+            color: #f0d090;
+        }
+        .session-list .round .r-action {
+            font-size: 0.7rem;
+            color: #7fa89a;
+            white-space: nowrap;
+        }
+        .session-list .round .r-action.yes {
+            color: #7dcdb0;
+        }
+        .session-list .round .r-action.no {
+            color: #c09a7a;
+        }
+        /* 系统消息特殊样式 */
+        .session-list .round.system-msg {
+            border-left-color: #f0b87a;
+            background: rgba(240, 180, 100, 0.10);
+        }
+        .session-list .round.system-msg .r-idx {
+            color: #f0b87a;
+        }
+        .session-list .round.system-msg .r-text {
+            color: #f0d8b0;
+        }
+        .empty-hint {
+            color: #6f9588;
+            font-style: italic;
+            font-size: 0.85rem;
+            padding: 6px 0;
+        }
+
+        /* 导出 & 重置按钮行 */
+        .action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 4px;
+        }
+        .action-bar .left-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .action-btn {
+            background: #4a7a6e;
+            border: none;
+            border-radius: 60px;
+            padding: 8px 22px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.20);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .action-btn:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+        }
+        .action-btn.reset-btn {
+            background: #8a6e5a;
+        }
+        .action-btn.reset-btn:hover {
+            background: #9a7e6a;
+        }
+        .action-btn.export-btn {
+            background: #4a7a6e;
+        }
+        .export-hint {
+            font-size: 0.7rem;
+            color: #8aaea2;
+            text-align: right;
+        }
+        .export-hint .warn {
+            color: #f5b87a;
+        }
+
+        /* 底部提醒 */
+        .footer-note {
+            margin-top: 16px;
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 40px;
+            font-size: 0.8rem;
+            color: #3a5a5b;
+            text-align: center;
+            border-left: 4px solid #5a8e7e;
+        }
+        .footer-note strong {
+            color: #1f4d3a;
+        }
+
+        /* 滚动条美化 */
+        .session-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .session-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .session-list::-webkit-scrollbar-thumb {
+            background: #5a7e72;
+            border-radius: 10px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 820px) {
+            .app-container {
+                padding: 16px;
+                border-radius: 32px;
+            }
+            .main-grid {
+                flex-direction: column;
+            }
+            .knob-area {
+                min-width: unset;
+            }
+            .app-header h1 {
+                font-size: 1.4rem;
+            }
+            canvas#knobCanvas {
+                width: 140px;
+                height: 140px;
+            }
+            .app-header .left {
+                gap: 8px;
+            }
+        }
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 12px;
+                border-radius: 24px;
+            }
+            .wind-area,
+            .knob-area {
+                padding: 12px;
+                border-radius: 32px;
+            }
+            .app-header h1 {
+                font-size: 1.2rem;
+            }
+            .voice-control-row {
+                gap: 8px;
+            }
+            .mic-btn {
+                padding: 6px 14px 6px 12px;
+                font-size: 0.85rem;
+            }
+            .mic-btn .icon {
+                font-size: 1.4rem;
+            }
+            .student-badge {
+                font-size: 0.9rem;
+                padding: 4px 14px;
+            }
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .action-bar .left-group {
+                justify-content: center;
+            }
+            .session-list .round {
+                font-size: 0.75rem;
+                gap: 4px 10px;
+            }
+            .session-list .round .r-idx {
+                min-width: 60px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- 头部：带学生徽章 -->
+        <div class="app-header">
+            <div class="left">
+                <h1>📐 图形的旋转 · 课堂述评</h1>
+                <span class="sub">🎤 语音采集 · 要素解析 · 证据留存</span>
+            </div>
+            <div class="student-badge" id="studentBadge">👤 学生 1</div>
+        </div>
+
+        <!-- 主区域：风车 + 旋钮 -->
+        <div class="main-grid">
+            <!-- 风车 -->
+            <div class="wind-area">
+                <div class="wind-title">🌬️ 风力发电机</div>
+                <canvas id="windCanvas" width="500" height="350"></canvas>
+                <div class="wind-status" id="windStatusMsg">⛔ 风机静止 · 等待旋转指令</div>
+            </div>
+
+            <!-- 旋钮 + 语音 -->
+            <div class="knob-area">
+                <div class="knob-title">🎛️ 旋钮开关</div>
+                <div class="knob-container">
+                    <canvas id="knobCanvas" width="200" height="200"></canvas>
+                </div>
+                <div class="knob-pointer-deg" id="knobAngleDisplay">指针方向: 0° (12 点)</div>
+
+                <!-- 语音控制 -->
+                <div class="voice-control-row">
+                    <button class="mic-btn" id="micButton">
+                        <span class="icon" id="micIcon">🎙️</span>
+                        <span class="label" id="micStateLabel">点击说话</span>
+                    </button>
+                    <span style="font-size:0.7rem; color:#8aaea2;">⏺️ 全量采集 · 不做评判</span>
+                </div>
+                <div class="mic-status-hint">
+                    <span class="warn">⚠️</span> 语音识别存在误差，请教师结合学生真实口头表达核对
+                </div>
+
+                <!-- 语音数据区：仅保留会话记录 + 操作栏 -->
+                <div class="voice-data-area">
+                    <!-- 全部会话缓存（包含系统消息 + 语音记录） -->
+                    <div class="session-box">
+                        <div class="box-label">
+                            📋 全部会话记录
+                            <span id="sessionCount">0</span>
+                        </div>
+                        <div class="session-list" id="sessionList">
+                            <div class="empty-hint">暂无会话记录</div>
+                        </div>
+                    </div>
+
+                    <!-- 操作栏：重置+导出 -->
+                    <div class="action-bar">
+                        <div class="left-group">
+                            <button class="action-btn reset-btn" id="resetBtn">🔄 重置旋钮与风机</button>
+                            <button class="action-btn export-btn" id="exportBtn">📤 导出样本 (匿名)</button>
+                        </div>
+                        <span class="export-hint">
+                            <span class="warn">🧑‍🏫</span> 隐去身份信息 · 供课堂述评
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="footer-note">
+            <strong>📌 课堂规则：</strong> 系统只做<strong>客观记录、转写、要素拆解</strong>，不做定性评判。
+            教师结合学生真实口头表达，开展群体性课堂述评。
+            <span style="margin-left:12px; opacity:0.7;">✅ 完整指令执行动画 · 缺失指令展示标签</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // =================================================================
+            //  1. 风车 & 旋钮 (保留原有逻辑)
+            // =================================================================
+            const windCanvas = document.getElementById('windCanvas');
+            const wCtx = windCanvas.getContext('2d');
+            windCanvas.width = 500;
+            windCanvas.height = 350;
+            const wCenterX = 250,
+                wCenterY = 160;
+            let windmillAngle = 0;
+            let isWindmillRunning = false;
+            let windAnimId = null;
+
+            function drawWindmill(angleDeg) {
+                wCtx.clearRect(0, 0, windCanvas.width, windCanvas.height);
+                const grad = wCtx.createLinearGradient(0, 0, 0, 250);
+                grad.addColorStop(0, '#c3e8f2');
+                grad.addColorStop(1, '#e0f0e8');
+                wCtx.fillStyle = grad;
+                wCtx.fillRect(0, 0, windCanvas.width, windCanvas.height);
+                wCtx.fillStyle = '#88b86b';
+                wCtx.fillRect(0, 240, windCanvas.width, 110);
+                wCtx.fillStyle = '#6f9e4f';
+                for (let i = 0; i < 10; i++) {
+                    wCtx.beginPath();
+                    wCtx.moveTo(30 + i * 50, 240);
+                    wCtx.lineTo(20 + i * 50, 220);
+                    wCtx.lineTo(40 + i * 50, 220);
+                    wCtx.fill();
+                }
+                const towerColor = '#d8e0d4';
+                const towerDark = '#c0c8b8';
+                wCtx.fillStyle = towerColor;
+                wCtx.beginPath();
+                wCtx.moveTo(wCenterX - 12, wCenterY + 60);
+                wCtx.lineTo(wCenterX + 12, wCenterY + 60);
+                wCtx.lineTo(wCenterX + 20, wCenterY + 135);
+                wCtx.lineTo(wCenterX - 20, wCenterY + 135);
+                wCtx.fill();
+                wCtx.fillStyle = towerDark;
+                wCtx.fillRect(wCenterX - 9, wCenterY + 60, 18, 16);
+                wCtx.beginPath();
+                wCtx.moveTo(wCenterX - 10, wCenterY + 98);
+                wCtx.lineTo(wCenterX - 34, wCenterY + 142);
+                wCtx.lineWidth = 5;
+                wCtx.strokeStyle = towerDark;
+                wCtx.stroke();
+                wCtx.beginPath();
+                wCtx.moveTo(wCenterX + 10, wCenterY + 98);
+                wCtx.lineTo(wCenterX + 34, wCenterY + 142);
+                wCtx.stroke();
+                wCtx.fillStyle = '#c0c9c2';
+                wCtx.beginPath();
+                wCtx.ellipse(wCenterX, wCenterY - 6, 32, 18, 0, 0, Math.PI * 2);
+                wCtx.fill();
+                wCtx.fillStyle = towerColor;
+                wCtx.fillRect(wCenterX - 8, wCenterY + 8, 16, 52);
+                wCtx.strokeStyle = towerDark;
+                wCtx.strokeRect(wCenterX - 8, wCenterY + 8, 16, 52);
+                wCtx.beginPath();
+                wCtx.moveTo(wCenterX - 5, wCenterY + 8);
+                wCtx.lineTo(wCenterX, wCenterY + 24);
+                wCtx.lineTo(wCenterX + 5, wCenterY + 8);
+                wCtx.fillStyle = '#e2e8e0';
+                wCtx.fill();
+                wCtx.fillStyle = towerDark;
+                wCtx.fillRect(wCenterX - 7, wCenterY + 56, 14, 8);
+                wCtx.fillStyle = '#e0b04b';
+                wCtx.beginPath();
+                wCtx.arc(wCenterX, wCenterY, 13, 0, Math.PI * 2);
+                wCtx.fill();
+                wCtx.fillStyle = '#b37b2e';
+                wCtx.beginPath();
+                wCtx.arc(wCenterX, wCenterY, 6, 0, Math.PI * 2);
+                wCtx.fill();
+                wCtx.save();
+                wCtx.translate(wCenterX, wCenterY);
+                wCtx.rotate(angleDeg * Math.PI / 180);
+                for (let i = 0; i < 3; i++) {
+                    wCtx.save();
+                    wCtx.rotate(i * Math.PI * 2 / 3);
+                    wCtx.beginPath();
+                    wCtx.moveTo(10, -7);
+                    wCtx.lineTo(70, -5);
+                    wCtx.lineTo(78, 0);
+                    wCtx.lineTo(70, 5);
+                    wCtx.lineTo(10, 7);
+                    wCtx.fillStyle = '#e2e8e0';
+                    wCtx.fill();
+                    wCtx.fillStyle = '#b9c4b3';
+                    wCtx.fillRect(12, -2.5, 62, 5);
+                    wCtx.restore();
+                }
+                wCtx.restore();
+                if (isWindmillRunning) {
+                    wCtx.font = "bold 18px system-ui";
+                    wCtx.fillStyle = '#1f6d49';
+                    wCtx.fillText("💨 运转中 💨", wCenterX + 30, wCenterY - 45);
+                } else {
+                    wCtx.font = "italic 15px system-ui";
+                    wCtx.fillStyle = '#8f6b4a';
+                    wCtx.fillText("⛔ 未启动", wCenterX + 20, wCenterY - 40);
+                }
+            }
+
+            function startWindmillAnimation() {
+                if (windAnimId) cancelAnimationFrame(windAnimId);
+
+                function animate() {
+                    if (isWindmillRunning) windmillAngle = (windmillAngle + 2.5) % 360;
+                    drawWindmill(windmillAngle);
+                    windAnimId = requestAnimationFrame(animate);
+                }
+                animate();
+            }
+
+            function setWindmillRunning(run) {
+                isWindmillRunning = run;
+                document.getElementById('windStatusMsg').innerHTML = run ?
+                    '✅ 风机已启动！叶片持续旋转 ⚡' :
+                    '⛔ 风机静止 · 等待旋转指令';
+                drawWindmill(windmillAngle);
+            }
+
+            // ----- 旋钮 -----
+            const knobCanvas = document.getElementById('knobCanvas');
+            const kCtx = knobCanvas.getContext('2d');
+            knobCanvas.width = 200;
+            knobCanvas.height = 200;
+            let knobPointerAngle = 0;
+            let knobAnimFrame = null;
+
+            function drawKnob(angleDeg) {
+                kCtx.clearRect(0, 0, 200, 200);
+                const centerX = 100,
+                    centerY = 100,
+                    radius = 85;
+                kCtx.beginPath();
+                kCtx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                kCtx.fillStyle = '#f0ede0';
+                kCtx.fill();
+                kCtx.strokeStyle = '#b0a78a';
+                kCtx.lineWidth = 3;
+                kCtx.stroke();
+                for (let i = 0; i < 12; i++) {
+                    let rad = (i - 3) * Math.PI / 6;
+                    let x1 = centerX + (radius - 10) * Math.cos(rad);
+                    let y1 = centerY + (radius - 10) * Math.sin(rad);
+                    let x2 = centerX + (radius - 2) * Math.cos(rad);
+                    let y2 = centerY + (radius - 2) * Math.sin(rad);
+                    kCtx.beginPath();
+                    kCtx.moveTo(x1, y1);
+                    kCtx.lineTo(x2, y2);
+                    kCtx.strokeStyle = '#7a6e50';
+                    kCtx.lineWidth = (i === 0 || i === 6) ? 3 : 1.5;
+                    kCtx.stroke();
+                }
+                kCtx.font = "bold 20px system-ui";
+                kCtx.fillStyle = '#b33e2e';
+                kCtx.fillText("OFF", 78, 38);
+                kCtx.fillStyle = '#2e7d5e';
+                kCtx.fillText("ON", 157, 107);
+                kCtx.font = "bold 28px system-ui";
+                kCtx.fillStyle = "#e34234";
+                kCtx.fillText("O", 84, 84);
+                let radPointer = (angleDeg - 90) * Math.PI / 180;
+                let xEnd = centerX + 62 * Math.cos(radPointer);
+                let yEnd = centerY + 62 * Math.sin(radPointer);
+                kCtx.beginPath();
+                kCtx.moveTo(centerX, centerY);
+                kCtx.lineTo(xEnd, yEnd);
+                kCtx.strokeStyle = '#d43f1f';
+                kCtx.lineWidth = 5;
+                kCtx.stroke();
+                kCtx.beginPath();
+                kCtx.arc(centerX, centerY, 12, 0, 2 * Math.PI);
+                kCtx.fillStyle = '#b87c3a';
+                kCtx.fill();
+                let displayAngle = ((angleDeg % 360) + 360) % 360;
+                document.getElementById('knobAngleDisplay').innerHTML = `指针方向: ${Math.round(displayAngle)}° (12点=0°)`;
+            }
+
+            function setKnobAngleImmediate(angleDeg) {
+                knobPointerAngle = ((angleDeg % 360) + 360) % 360;
+                drawKnob(knobPointerAngle);
+            }
+
+            function animateKnob(delta, onComplete) {
+                if (knobAnimFrame) {
+                    cancelAnimationFrame(knobAnimFrame);
+                    knobAnimFrame = null;
+                }
+                if (delta === 0) {
+                    if (onComplete) onComplete();
+                    return;
+                }
+                const startAngle = knobPointerAngle;
+                const step = (delta > 0 ? 3 : -3);
+                const totalSteps = Math.ceil(Math.abs(delta) / 3);
+                let currentAngle = startAngle;
+                let stepCount = 0;
+
+                function stepAnim() {
+                    currentAngle += step;
+                    knobPointerAngle = currentAngle;
+                    drawKnob(knobPointerAngle);
+                    stepCount++;
+                    if (stepCount < totalSteps) {
+                        knobAnimFrame = requestAnimationFrame(stepAnim);
+                    } else {
+                        knobPointerAngle = startAngle + delta;
+                        drawKnob(knobPointerAngle);
+                        knobPointerAngle = ((knobPointerAngle % 360) + 360) % 360;
+                        drawKnob(knobPointerAngle);
+                        knobAnimFrame = null;
+                        if (onComplete) onComplete();
+                    }
+                }
+                knobAnimFrame = requestAnimationFrame(stepAnim);
+            }
+
+            function resetKnobImmediate() {
+                if (knobAnimFrame) {
+                    cancelAnimationFrame(knobAnimFrame);
+                    knobAnimFrame = null;
+                }
+                setKnobAngleImmediate(0);
+            }
+
+            // =================================================================
+            //  2. 语音处理 · 全量采集 · 要素解析 · 双分支
+            // =================================================================
+
+            // ---- 数据存储 ----
+            const allRecords = []; // { id, studentId, rawText, center, direction, angle, tags, actionExecuted, timestamp }
+            const systemMessages = []; // { id, text, timestamp }
+            let recordId = 0;
+            let sysMsgId = 0;
+            let currentStudentId = 1;
+
+            // ---- DOM 引用 ----
+            const sessionListEl = document.getElementById('sessionList');
+            const sessionCountEl = document.getElementById('sessionCount');
+            const studentBadgeEl = document.getElementById('studentBadge');
+
+            // ---- 工具：中文数字转阿拉伯 ----
+            function chineseToNumber(chStr) {
+                const map = { '零': 0, '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+                    '百': 100 };
+                let num = 0,
+                    temp = 0;
+                for (let ch of chStr) {
+                    let val = map[ch];
+                    if (val === undefined) continue;
+                    if (val >= 10) {
+                        if (temp === 0) temp = 1;
+                        num += temp * val;
+                        temp = 0;
+                    } else {
+                        temp = val;
+                    }
+                }
+                num += temp;
+                return num;
+            }
+
+            // ---- 提取角度 ----
+            function extractAngleFromText(text) {
+                let arabic = text.match(/(\d+)(?=度)/);
+                if (arabic) return parseInt(arabic[1], 10);
+                let chnMatch = text.match(/([零一二三四五六七八九十百]+)(?=度)/);
+                if (chnMatch) return chineseToNumber(chnMatch[1]);
+                if (text.includes('九十')) return 90;
+                if (text.includes('一百八十')) return 180;
+                if (text.includes('二百七十')) return 270;
+                if (text.includes('三百六十')) return 360;
+                if (text.includes('四十五')) return 45;
+                return null;
+            }
+
+            // ---- 核心：要素解析 ----
+            function parseElements(rawText) {
+                const text = rawText.trim();
+                let center = null;
+                if (/绕点O|绕点o|绕O|绕o/.test(text)) center = '绕点O';
+
+                let direction = null;
+                if (/顺时针/.test(text)) direction = 'cw';
+                else if (/逆时针/.test(text)) direction = 'ccw';
+
+                let angle = extractAngleFromText(text);
+                let angleValid = (angle !== null && angle > 0 && Number.isInteger(angle));
+
+                const tags = [];
+                if (!center) tags.push('【缺失旋转中心】');
+                if (!direction) tags.push('【缺失旋转方向】');
+                if (!angleValid) tags.push('【角度异常】');
+                if (center && direction && angleValid) tags.push('【三要素齐全】');
+
+                return {
+                    center,
+                    direction,
+                    angle: angleValid ? angle : null,
+                    angleRaw: angle,
+                    angleValid,
+                    tags,
+                    isComplete: (center && direction && angleValid)
+                };
+            }
+
+            // ---- 判断是否启动风机 ----
+            function isStartCommand(direction, angle) {
+                return (direction === 'cw' && angle === 90) || (direction === 'ccw' && angle === 270);
+            }
+
+            // ---- 执行指令 (双分支) ----
+            function executeCommand(record) {
+                const { direction, angle, isComplete } = record;
+
+                if (isComplete && direction && angle !== null) {
+                    const delta = direction === 'cw' ? angle : -angle;
+                    animateKnob(delta, () => {
+                        if (isStartCommand(direction, angle)) {
+                            if (!isWindmillRunning) setWindmillRunning(true);
+                        }
+                        record.actionExecuted = true;
+                        updateUI();
+                    });
+                    record.actionExecuted = true;
+                    updateUI();
+                    return;
+                }
+
+                record.actionExecuted = false;
+                updateUI();
+            }
+
+            // ---- 处理语音输入 (全量采集) ----
+            function processVoiceInput(rawText) {
+                if (!rawText || rawText.trim().length === 0) return;
+
+                if (/重置|归零/.test(rawText)) {
+                    resetSystem();
+                    return;
+                }
+
+                const parsed = parseElements(rawText);
+
+                const record = {
+                    id: ++recordId,
+                    studentId: currentStudentId,
+                    rawText: rawText.trim(),
+                    center: parsed.center,
+                    direction: parsed.direction,
+                    angle: parsed.angle,
+                    angleRaw: parsed.angleRaw,
+                    angleValid: parsed.angleValid,
+                    tags: parsed.tags,
+                    isComplete: parsed.isComplete,
+                    actionExecuted: false,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+
+                allRecords.push(record);
+                executeCommand(record);
+            }
+
+            // ---- 重置系统：仅物理重置指针与风机，不清除记录，不切换学生 ----
+            function resetSystem() {
+                if (knobAnimFrame) {
+                    cancelAnimationFrame(knobAnimFrame);
+                    knobAnimFrame = null;
+                }
+                resetKnobImmediate();
+                setWindmillRunning(false);
+                windmillAngle = 0;
+                drawWindmill(windmillAngle);
+
+                addSystemMessage('🔄 系统已重置 (指针归零，风机停止)');
+                updateUI();
+            }
+
+            // ---- 添加系统消息 (独立存储，显示在会话记录顶部) ----
+            function addSystemMessage(msg) {
+                systemMessages.push({
+                    id: ++sysMsgId,
+                    text: msg,
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                // 限制系统消息数量，保留最近20条
+                while (systemMessages.length > 20) {
+                    systemMessages.shift();
+                }
+                renderSessions();
+                updateCounts();
+            }
+
+            // =================================================================
+            //  3. UI 渲染
+            // =================================================================
+
+            function updateUI() {
+                renderSessions();
+                updateCounts();
+                studentBadgeEl.textContent = `👤 学生 ${currentStudentId}`;
+            }
+
+            // 渲染全部会话记录：系统消息（顶部）+ 语音记录（按时间正序）
+            function renderSessions() {
+                const list = document.getElementById('sessionList');
+                list.innerHTML = '';
+
+                const total = systemMessages.length + allRecords.length;
+                if (total === 0) {
+                    list.innerHTML = '<div class="empty-hint">暂无会话记录</div>';
+                    return;
+                }
+
+                // 1. 先渲染系统消息（最新的在前）
+                for (let i = systemMessages.length - 1; i >= 0; i--) {
+                    const msg = systemMessages[i];
+                    const div = document.createElement('div');
+                    div.className = 'round system-msg';
+                    div.innerHTML = `
+                        <span class="r-idx">⚙️ 系统</span>
+                        <span class="r-text">${escapeHtml(msg.text)}</span>
+                        <span class="r-action" style="color:#f0b87a;">${msg.timestamp || ''}</span>
+                    `;
+                    list.appendChild(div);
+                }
+
+                // 如果有系统消息和语音记录，加一条分隔线
+                if (systemMessages.length > 0 && allRecords.length > 0) {
+                    const divider = document.createElement('div');
+                    divider.style.cssText =
+                        'border-top:1px solid rgba(255,255,255,0.08); margin:6px 0 8px; height:0;';
+                    list.appendChild(divider);
+                }
+
+                // 2. 再渲染所有语音记录（从旧到新）
+                for (let i = 0; i < allRecords.length; i++) {
+                    const rec = allRecords[i];
+                    const div = document.createElement('div');
+                    div.className = 'round';
+
+                    const tagHtml = rec.tags.map(t => {
+                        let cls = 'tag';
+                        if (t.includes('缺失')) cls += ' missing';
+                        else if (t.includes('三要素齐全')) cls += ' complete';
+                        else if (t.includes('异常')) cls += ' angle-err';
+                        return `<span class="${cls}">${t}</span>`;
+                    }).join('');
+
+                    const actionText = rec.actionExecuted ? '✅ 执行' : '⏸️ 仅展示';
+                    const actionCls = rec.actionExecuted ? 'yes' : 'no';
+
+                    div.innerHTML = `
+                        <span class="r-idx">S${rec.studentId} 轮次 ${i+1}</span>
+                        <span class="r-text">${escapeHtml(rec.rawText)}</span>
+                        <span class="r-tags">${tagHtml}</span>
+                        <span class="r-action ${actionCls}">${actionText}</span>
+                    `;
+                    list.appendChild(div);
+                }
+            }
+
+            function updateCounts() {
+                const total = systemMessages.length + allRecords.length;
+                document.getElementById('sessionCount').textContent = total;
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // =================================================================
+            //  4. 语音识别 (全量采集)
+            // =================================================================
+
+            let recognition = null;
+            let isListening = false;
+            const micBtn = document.getElementById('micButton');
+            const micIcon = document.getElementById('micIcon');
+            const micStateLabel = document.getElementById('micStateLabel');
+
+            function initSpeech() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) {
+                    micStateLabel.textContent = '❌ 不支持';
+                    return false;
+                }
+                recognition = new SR();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'zh-CN';
+
+                recognition.onstart = function() {
+                    isListening = true;
+                    micBtn.classList.add('listening');
+                    micIcon.textContent = '🎙️✨';
+                    micStateLabel.textContent = '聆听中…';
+                };
+
+                recognition.onend = function() {
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                    micIcon.textContent = '🎙️';
+                    micStateLabel.textContent = '点击说话';
+                };
+
+                recognition.onresult = function(event) {
+                    const result = event.results[event.results.length - 1];
+                    if (result && result[0]) {
+                        const spoken = result[0].transcript;
+                        processVoiceInput(spoken);
+                    }
+                };
+
+                recognition.onerror = function(event) {
+                    console.warn('语音识别错误:', event.error);
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                    micIcon.textContent = '🎙️';
+                    if (event.error === 'not-allowed') {
+                        micStateLabel.textContent = '❌ 请允许麦克风';
+                    } else {
+                        micStateLabel.textContent = '⚠️ 识别错误，重试';
+                        setTimeout(() => {
+                            micStateLabel.textContent = '点击说话';
+                        }, 2000);
+                    }
+                };
+                return true;
+            }
+
+            function toggleMic() {
+                if (!recognition && !initSpeech()) {
+                    alert('当前浏览器不支持语音识别，推荐使用 Chrome。');
+                    return;
+                }
+                if (isListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.warn(e);
+                    }
+                }
+            }
+
+            micBtn.addEventListener('click', toggleMic);
+
+            // =================================================================
+            //  5. 重置 & 导出
+            // =================================================================
+
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                resetSystem();
+            });
+
+            document.getElementById('exportBtn').addEventListener('click', function() {
+                if (allRecords.length === 0) {
+                    alert('暂无记录可导出。请先采集一些语音样本。');
+                    return;
+                }
+
+                let lines = [];
+                lines.push('学生编号\t轮次\t转写文本\t旋转中心\t旋转方向\t旋转角度\t标签\t是否执行动画');
+                for (let i = 0; i < allRecords.length; i++) {
+                    const rec = allRecords[i];
+                    const center = rec.center || '—';
+                    const dir = rec.direction === 'cw' ? '顺时针' : (rec.direction === 'ccw' ? '逆时针' : '—');
+                    const angle = rec.angle !== null && rec.angle !== undefined ? rec.angle + '°' : '—';
+                    const tags = rec.tags.join('、') || '—';
+                    const action = rec.actionExecuted ? '是' : '否';
+                    lines.push(
+                        `学生${rec.studentId}\t${i+1}\t${rec.rawText}\t${center}\t${dir}\t${angle}\t${tags}\t${action}`);
+                }
+
+                const content = lines.join('\n');
+                const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `旋转课堂_样本_${new Date().toISOString().slice(0,10)}.tsv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // =================================================================
+            //  6. 初始化
+            // =================================================================
+
+            function init() {
+                drawWindmill(0);
+                setKnobAngleImmediate(0);
+                setWindmillRunning(false);
+                startWindmillAnimation();
+                initSpeech();
+                studentBadgeEl.textContent = `👤 学生 ${currentStudentId}`;
+                addSystemMessage('🎤 系统就绪 · 全量采集语音指令 (学生1)');
+                updateUI();
+            }
+
+            init();
+
+            // 暴露调试接口
+            window.__debug = {
+                allRecords,
+                systemMessages,
+                processVoiceInput,
+                resetSystem,
+                parseElements,
+                currentStudentId
+            };
+
+        })();
+    </script>
+
+</body>
+</html>
